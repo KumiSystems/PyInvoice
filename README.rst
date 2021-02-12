@@ -2,16 +2,7 @@
 PyInvoice
 =========
 
-.. image:: https://api.travis-ci.org/CiCiApp/PyInvoice.svg?branch=master
-    :target: https://github.com/CiCiApp/PyInvoice
-
 Invoice/Receipt Generator.
-
-Screenshot
-----------
-
-.. image:: https://ciciapp.github.io/PyInvoice/dist/invoice.png
-    :target: https://github.com/CiCiApp/PyInvoice
 
 Dependency
 ----------
@@ -37,7 +28,7 @@ Install
 
 .. code-block:: bash
 
-    pip install pyinvoice
+    pip install https://kumig.it/kumisystems/PyInvoice
 
 Usage
 -----

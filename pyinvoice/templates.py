@@ -7,7 +7,7 @@ from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, Spacer
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, Spacer, Image
 
 from pyinvoice.components import SimpleTable, TableWithHeader, PaidStamp
 from pyinvoice.models import PDFInfo, Item, Transaction, InvoiceInfo, ServiceProviderInfo, ClientInfo
@@ -52,6 +52,8 @@ class SimpleInvoice(SimpleDocTemplate):
         self._story = []
         self._bottom_tip = None
         self._bottom_tip_align = None
+        self._logo = None
+        self._build_kwargs = {}
 
     @property
     def items(self):
@@ -190,8 +192,8 @@ class SimpleInvoice(SimpleDocTemplate):
                     item.name,
                     Paragraph(item.description, self._defined_styles.get('TableParagraph')),
                     item.units,
-                    item.unit_price,
-                    item.amount
+                    '{0:.2f}'.format(float(item.unit_price)),
+                    '{0:.2f}'.format(item.amount)
                 )
             )
             item_subtotal += item.amount
@@ -221,7 +223,7 @@ class SimpleInvoice(SimpleDocTemplate):
         # ##### Subtotal #####
         rounditem_subtotal = self.getroundeddecimal(item_subtotal, self.precision)
         item_data.append(
-            ('Subtotal', '', '', '', rounditem_subtotal)
+            ('Subtotal', '', '', '', '{0:.2f}'.format(rounditem_subtotal))
         )
 
         style.append(('SPAN', (0, sum_start_y_index), (sum_start_x_index, sum_start_y_index)))
@@ -232,7 +234,7 @@ class SimpleInvoice(SimpleDocTemplate):
             tax_total = item_subtotal * (Decimal(str(self._item_tax_rate)) / Decimal('100'))
             roundtax_total = self.getroundeddecimal(tax_total, self.precision)
             item_data.append(
-                ('Vat/Tax ({0}%)'.format(self._item_tax_rate), '', '', '', roundtax_total)
+                ('Vat/Tax ({0}%)'.format(self._item_tax_rate), '', '', '', '{0:.2f}'.format(roundtax_total))
             )
             sum_start_y_index += 1
             style.append(('SPAN', (0, sum_start_y_index), (sum_start_x_index, sum_start_y_index)))
@@ -243,7 +245,7 @@ class SimpleInvoice(SimpleDocTemplate):
         # Total
         total = item_subtotal + (tax_total if tax_total else Decimal('0'))
         roundtotal = self.getroundeddecimal(total, self.precision)
-        item_data.append(('Total', '', '', '', roundtotal))
+        item_data.append(('Total', '', '', '', '{0:.2f}'.format(roundtotal)))
         sum_start_y_index += 1
         style.append(('SPAN', (0, sum_start_y_index), (sum_start_x_index, sum_start_y_index)))
         style.append(('ALIGN', (0, sum_start_y_index), (sum_end_x_index, -1), 'RIGHT'))
@@ -267,7 +269,7 @@ class SimpleInvoice(SimpleDocTemplate):
                 t.transaction_id,
                 Paragraph(t.gateway, self._defined_styles.get('TableParagraph')),
                 self._format_value(t.transaction_datetime),
-                t.amount,
+                '{0:.2f}'.format(t.amount),
             ) for t in self._transactions if isinstance(t, Transaction)
         ]
 
@@ -298,17 +300,30 @@ class SimpleInvoice(SimpleDocTemplate):
                 )
             )
 
-    def finish(self):
-        self._story = []
+    def logo(self, logo):
+        if isinstance(logo, Image):
+            self._logo = logo
+        else:
+            self._logo = Image(logo)
 
+    def _build_logo(self):
+        if self._logo:
+            self._logo.hAlign = "LEFT"
+            self._logo.vAlign = "TOP"
+
+            self._story.append(self._logo)
+
+    def _build_paid_stamp(self):
+        if self.is_paid:
+            self._build_kwargs['onFirstPage'] = PaidStamp(3 * inch, -2 * inch)
+
+    def finish(self):
+        self._build_logo()
         self._build_invoice_info()
         self._build_service_provider_and_client_info()
         self._build_items()
         self._build_transactions()
         self._build_bottom_tip()
+        self._build_paid_stamp()
 
-        kwargs = {}
-        if self.is_paid:
-            kwargs['onFirstPage'] = PaidStamp(7 * inch, 5.8 * inch)
-
-        self.build(self._story, **kwargs)
+        self.build(self._story, **self._build_kwargs)
