@@ -28,7 +28,7 @@ Install
 
 .. code-block:: bash
 
-    pip install https://kumig.it/kumisystems/PyInvoice
+    pip install git+https://kumig.it/kumisystems/PyInvoice
 
 Usage
 -----
